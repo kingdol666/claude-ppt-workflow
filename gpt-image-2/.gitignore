@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.local
+*.png
+*.jpg
+*.jpeg
+*.webp
+!references/**/*.md
+garden-gpt-image-2/
