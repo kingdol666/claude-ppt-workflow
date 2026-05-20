@@ -10,14 +10,16 @@
 你是一个 HTML 幻灯片构建专家。请根据以下文件构建所有 HTML slides。
 
 输入文件（必须先阅读）：
-1. 规划文件: C:/Users/87287/workspace/ppt_workspace/PLAN.md
-2. 研究笔记: C:/Users/87287/workspace/ppt_workspace/research_notes.md
+1. 规划文件: <WORKSPACE>/ppt_workspace/PLAN.md
+2. 知识库索引: <WORKSPACE>/ppt_workspace/references/_index.md
+3. 知识库详细文件（按需）: <WORKSPACE>/ppt_workspace/references/ref-*.md
 
 操作步骤：
 1. 先加载 huashu-slides 技能：Skill(skill="huashu-slides")
 2. 阅读 PLAN.md 获取逐页规划、风格参数、配图规格
-3. 阅读 research_notes.md 获取领域知识（这是内容扩展的弹药库）
-4. 为每一页构建独立 HTML 文件，遵循以下硬性约束：
+3. 阅读 _index.md 获取知识维度概览
+4. 对每页幻灯片，根据该页涉及的知识维度，阅读对应的 ref-*.md 获取具体数据、引用、背景解释
+5. 为每一页构建独立 HTML 文件，遵循以下硬性约束：
    - DIV 里文字必须用 <p> 或 <h1>-<h6> 包裹（包括页码、标签、emoji）
    - 不支持 CSS 渐变，只能纯色
    - <p>/<h*> 不能有背景/边框，放外层 <div>
@@ -28,7 +30,7 @@
    - 10页至少使用6种不同的排版逻辑（不是换颜色/字号，而是真正不同的空间组织）
    - 密度必须有呼吸感：不连续2页同为深度页
 6. 输出所有 slide-01.html ~ slide-NN.html 到：
-   C:/Users/87287/workspace/ppt_workspace/slides/
+   <WORKSPACE>/ppt_workspace/slides/
 
 完成后汇报：生成了几页，每页用了什么布局模式，是否有任何问题。
 ```

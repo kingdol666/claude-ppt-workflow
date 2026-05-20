@@ -86,7 +86,7 @@ Get-ChildItem ppt_workspace/slides/slide-*.html | ForEach-Object {
 
 | 分数 | 标准 |
 |------|------|
-| 5 | 数据有出处和上下文解释，论点有逻辑递进，引用了 research_notes.md 的具体数据 |
+| 5 | 数据有出处和上下文解释，论点有逻辑递进，引用了 references/（知识库目录） 的具体数据 |
 | 4 | 内容充实，有数据和引用 |
 | 3 | 内容正确但偏干（数据裸奔无解释），或偏水（空洞无数据） |
 | 2 | 要点式碎片，缺上下文和解释 |
@@ -123,7 +123,7 @@ Get-ChildItem ppt_workspace/slides/slide-*.html | ForEach-Object {
 **关键规则（触发重做）**：
 - "排版与布局" ≤ 2 分 → 无论总分 → 重做该页
 - "图文协调" ≤ 2 分 → 触发**生图诊断**（见第4节）
-- "内容质量" ≤ 2 分 → 重新确认 research_notes.md 数据 → 重写该页
+- "内容质量" ≤ 2 分 → 重新确认 references/（知识库目录） 数据 → 重写该页
 
 ---
 
@@ -203,7 +203,7 @@ Get-ChildItem ppt_workspace/slides/slide-*.html | ForEach-Object {
 
 **Slide 6 — ❌ 图文协调 1 分 + 内容质量 2 分**
 - 问题：配图是通用科技插画，与"GCN预测Tg精度"内容无关；数据裸奔无出处
-- 修复：重写 Prompt 做 GCN 架构示意图；从 research_notes.md 补充 Park 2022 引用
+- 修复：重写 Prompt 做 GCN 架构示意图；从 references/（知识库目录） 补充 Park 2022 引用
 - 需要生图：是 → 新 Prompt: "Graph neural network architecture processing polymer repeat units into glass transition temperature predictions..."
 
 ### 生图清单（本次审查触发）

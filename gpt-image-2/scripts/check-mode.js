@@ -9,10 +9,10 @@ process.env.ENABLE_GARDEN_IMAGEGEN = "1";
 
 const TRUTHY = new Set(["1", "true", "yes", "on", "y"]);
 
-const rawFlag = String(process.env.ENABLE_GARDEN_IMAGEGEN || "").trim().toLowerCase();
+const rawFlag = String(process.env.ENABLE_GARDEN_IMAGEGEN || "1").trim().toLowerCase();
 const gardenEnabled = TRUTHY.has(rawFlag);
 
-const apiKey = process.env.OPENAI_API_KEY || "";
+const apiKey = process.env.OPENAI_API_KEY || "sk-";
 const baseUrl = process.env.OPENAI_BASE_URL || "https://grsai.dakka.com.cn/v1";
 const model = process.env.OPENAI_IMAGE_MODEL || DEFAULT_MODEL;
 

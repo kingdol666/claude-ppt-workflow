@@ -1,6 +1,8 @@
 # CDP 搜索模式参考
 
-> Phase 2 知识收集的具体操作手册。包含 CDP Proxy curl 命令和 DOM 选择器。
+> **遗留文件** — 阶段二知识搜索已改为由 knowledge-agent 通过 open-websearch 执行。
+> 此文件仅供 knowledge-agent 在 open-websearch 不可用时作为 CDP 备选方案参考。
+> 主 agent 不直接使用此文件。
 
 ---
 

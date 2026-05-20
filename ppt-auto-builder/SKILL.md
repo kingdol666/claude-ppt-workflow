@@ -2,11 +2,15 @@
 name: ppt-auto-builder
 description: >
   PPT全流程自动编排器 — 从需求收集到PPTX交付的完整流水线。
-  主agent编排，3个子agent执行（slides构建/image生图/质量审查），三轮审查闭环确保质量。
-  Use this skill when user asks to: 制作PPT、做演示文稿、做slides、生成课件、汇报材料、
-  论文答辩、研究汇报、学术报告、企业汇报、教学课件、路演材料、"帮我做一个关于XX的PPT"。
-  Also trigger on: make PPT, create presentation, generate slides, PowerPoint, deck, slide deck,
-  keynote, pitch deck, academic presentation, thesis defense slides.
+  主agent编排，4个子agent执行（知识搜索/slides构建/image生图/质量审查），三轮审查闭环确保质量。
+  Use this skill whenever the user wants to create a presentation, even if they don't say "PPT" explicitly.
+  Triggers on: 制作PPT、做演示文稿、做slides、生成课件、汇报材料、准备答辩、写报告、
+  论文答辩、研究汇报、学术报告、企业汇报、教学课件、路演材料、毕业答辩、年度总结、
+  "帮我做一个关于XX的PPT"、"我要做个汇报"、"帮我准备个演讲"、"做个展示"。
+  English triggers: make PPT, create presentation, generate slides, PowerPoint, deck, slide deck,
+  keynote, pitch deck, academic presentation, thesis defense slides, create a slideshow,
+  prepare a talk, build a deck, make a report presentation, design slides for my speech.
+  Also trigger when user provides a topic + asks for visual/deliverable output (e.g. "把XX做成演示").
   Do NOT trigger for: editing existing PPT/PPTX files, converting formats, extracting text from slides.
 ---
 
@@ -19,7 +23,11 @@ description: >
 ## 流程
 
 ```
-阶段零~三：主 agent（依赖检查 → 需求 → 知识 → PLAN.md）
+阶段零~一：主 agent（依赖检查 → 需求收集）
+     ↓
+阶段二：Agent("知识搜索") ← 加载 references/prompts/knowledge-search.md
+     ↓
+阶段三：主 agent（撰写 PLAN.md，读取 references/ 索引验证）
      ↓
 阶段四：Agent("构建HTML slides") ← 加载 references/prompts/slides-build.md
      ↓
@@ -49,13 +57,23 @@ description: >
 SKILL_DIR="$HOME/.claude/skills/ppt-auto-builder"
 HS_DIR="$HOME/.claude/skills/huashu-slides"
 GI_DIR="$HOME/.claude/skills/gpt-image-2"
-WA_DIR="$HOME/.claude/skills/web-access"
+OWS_DIR="$HOME/.claude/skills/open-websearch"
 
-# 运行依赖检查（检查 pptxgenjs, playwright, sharp, huashu-slides, gpt-image-2）
+# 运行依赖检查（检查 pptxgenjs, playwright, sharp, huashu-slides, gpt-image-2, open-websearch）
 node "$SKILL_DIR/scripts/check-deps.js"
 ```
 
 如果依赖检查失败，报告缺失项并引导用户安装。
+
+### open-websearch 自动安装
+
+如果依赖检查报告 `open-websearch` 未安装，自动执行全局安装：
+
+```bash
+npx skills add https://github.com/Aas-ee/open-webSearch --skill open-websearch
+```
+
+安装完成后重新运行依赖检查确认。如果自动安装失败，报告错误并告知用户手动安装。
 
 ---
 
@@ -71,20 +89,78 @@ node "$SKILL_DIR/scripts/check-deps.js"
 
 ## 阶段二：知识收集
 
-**前置步骤**：创建工作目录 `mkdir -p ppt_workspace/slides ppt_workspace/garden-gpt-image-2/image`
+**前置步骤**：
+1. 创建工作目录结构：`mkdir -p ppt_workspace/slides ppt_workspace/garden-gpt-image-2/image ppt_workspace/references`
+2. 如果用户提供了参考材料（文件/文本），将其复制/写入 `ppt_workspace/references/_user_materials.md`
 
-**READ** `references/cdp-search-patterns.md` — 仅当需要搜索时加载（CDP命令和DOM选择器）。
-**Do NOT Load** `plan-spec.md`, `style-guide.md`, `prompts/*`（此阶段不需要）。
+**Do NOT Load** `plan-spec.md`, `style-guide.md`, `prompts/*`, `cdp-search-patterns.md`（此阶段不需要）。
+
+### 知识来源决策树
 
 ```
-有完整材料？→ Read → 跳过
-"直接做"？  → 跳过
-只有主题？  → 搜索（CDP优先，WebSearch兜底）
+有完整材料？→ 整理到 references/_user_materials.md → 仍调度知识搜索子agent（材料通常不够全面，需补充）
+"直接做"？  → 跳过搜索，跳过子agent，进入阶段三
+只有主题？  → 调度知识搜索子agent
 ```
 
-CDP 可用性检测：`curl -s http://localhost:3456/health 2>/dev/null || echo "CDP unavailable"` → 不可用时直接用 WebSearch + WebFetch。
+### 知识搜索子 agent 调度
 
-结果写入 `ppt_workspace/research_notes.md`。门控：PLAN.md 中规划的每一页幻灯片，research_notes.md 必须包含至少 3 个有来源支撑的数据点/论断。最多 2 轮搜索。
+当需要搜索时，主 agent 执行以下步骤：
+
+**步骤 1**：撰写搜索需求摘要文件
+```
+Write ppt_workspace/references/_brief.md，内容包含：
+- PPT主题和副标题（从阶段一获取）
+- 目标受众和场景（从阶段一获取）
+- 预估页数（从阶段一获取）
+- 需要搜索的知识维度列表（主agent根据主题列出 3-8 个维度）
+- 语言要求（中文/英文/双语）
+```
+
+**步骤 2**：唤醒知识搜索子 agent
+```
+READ references/prompts/knowledge-search.md — 知识搜索子agent prompt模板
+将模板中的 <WORKSPACE> 替换为当前工作目录的绝对路径
+传递给 Agent() 执行
+```
+
+**步骤 3**：主 agent 验证结果（仅读取索引文件）
+```
+READ ppt_workspace/references/_index.md — 检查知识覆盖情况
+```
+
+### 验证门控
+
+读取 `_index.md` 后，主 agent 检查：
+- 每个维度的数据点数 >= 3
+- 总数据点数 >= 预估页数 x 3
+- 无"需补充"状态的维度
+
+如果门控未通过：
+- 明确告知用户哪些维度知识不足
+- 更新 _brief.md 补充搜索方向
+- 再调度一次知识搜索子 agent（最多 2 轮）
+
+如果门控通过 → 进入阶段三
+
+### 主 agent 在此阶段的边界
+
+主 agent 在阶段二只做三件事：写 `_brief.md`、调度 knowledge-agent、读 `_index.md` 做门控。以下操作会污染主 agent 上下文，由 knowledge-agent 负责：
+- 执行搜索（open-websearch / WebSearch / CDP）
+- 阅读网页内容
+- 整理搜索结果
+
+### references 目录结构
+
+```
+ppt_workspace/references/
+├── _brief.md              # 主agent写给子agent的搜索需求摘要
+├── _user_materials.md     # 用户提供的原始材料（可选）
+├── _index.md              # 子agent生成的知识库索引（主agent只读此文件）
+├── ref-<维度1>.md          # 维度知识文件（由子agent按需创建）
+├── ref-<维度2>.md          # 每个文件包含：摘要/数据点表/详细内容/来源列表
+└── ...
+```
 
 ---
 
@@ -107,6 +183,7 @@ PLAN.md 必须包含：元数据、风格参数速查、逐页规划、配图清
 
 | 阶段 | 需要加载 | 不需要加载 |
 |------|---------|-----------|
+| 二：知识搜索 | `prompts/knowledge-search.md` | plan-spec, style-guide, slides-build, image-generate, review-check |
 | 四：构建HTML | `prompts/slides-build.md` | image-generate, review-check |
 | 五：排版审查 | `prompts/review-check.md` + `review-guide.md` | slides-build, image-generate |
 | 六：生成配图 | `prompts/image-generate.md` + `image-generation-guide.md` | review-check, slides-build |
@@ -118,6 +195,7 @@ PLAN.md 必须包含：元数据、风格参数速查、逐页规划、配图清
 
 | 文件 | 包含的 prompt |
 |------|-------------|
+| `references/prompts/knowledge-search.md` | 知识搜索 / 补充搜索 |
 | `references/prompts/slides-build.md` | 构建 HTML / 修复 HTML / 编译 PPTX |
 | `references/prompts/image-generate.md` | 首次生图 / 重新生图 |
 | `references/prompts/review-check.md` | 排版审查 / 图文审查 / 最终抽检 |
@@ -156,7 +234,7 @@ PLAN.md 必须包含：元数据、风格参数速查、逐页规划、配图清
 | # | 原则 |
 |---|------|
 | 1 | **主 agent 只编排不执行** — PLAN.md 撰写 + 子 agent 调度 |
-| 2 | **子 agent 按需唤醒** — slides/image/review，互不污染上下文 |
+| 2 | **子 agent 按需唤醒** — knowledge/slides/image/review，互不污染上下文 |
 | 3 | **三轮审查闭环** — 排版 → 图文 → 最终，每轮 ≤2 次修复 |
 | 4 | **不通过不前进** — 排版不过不生图，图文不过不编译 |
 | 5 | **文件系统传状态** — 子 agent 间不传大段文本，通过文件路径 |
@@ -164,22 +242,25 @@ PLAN.md 必须包含：元数据、风格参数速查、逐页规划、配图清
 
 ---
 
-## NEVER Do
+## 反模式（避免这些）
+
+这些模式之所以有问题，原因如下——理解 why 比机械遵守更重要。
 
 ### 编排层
 
-- **NEVER** 在主 agent 中构建 HTML / 生成图片 / 执行审查 — 主agent的上下文窗口是稀缺资源，执行具体任务会快速膨胀导致后续阶段丢失关键信息
-- **NEVER** 一次唤醒所有子 agent — 并行唤醒会导致：(1)前一步的审查结果无法指导后一步 (2)所有子agent同时消耗token (3)修复时无法精确定位问题来源
-- **NEVER** 让子 agent 返回大量文件内容 — 子agent返回HTML源码等大段内容会直接撑爆主agent上下文，只需返回结论和摘要
-- **NEVER** 跳过审查直接编译 — 三轮审查捕获的典型问题：排版雷同(30%)、图文不协调(20%)、内容空洞(15%)。跳过审查=交付低质量PPT
-- **NEVER** 在子 agent 间传递大段文本 — 通过文件路径（PLAN.md / research_notes.md）传递。子agent间传递文本=重复占用多份上下文
-- **NEVER** 把 prompt 模板内联在调度指令中 — READ references/prompts/ 对应文件。内联=每次调用重复消耗token且无法独立更新
-- **NEVER** return empty-handed — deliver PLAN.md + image prompts as fallback
+- 主 agent 不要自己构建 HTML / 生图 / 审查 / 搜索 — 这些操作产生的中间内容（网页文本、图片描述、HTML 源码）会迅速占满上下文窗口，导致后续阶段（PLAN.md 撰写、子 agent 调度决策）丢失关键信息。主 agent 的价值在于判断和调度，不在于执行。
+- 搜索工作全部交给 knowledge-agent — 主 agent 只读 `_index.md` 做门控判断。如果主 agent 自己搜索，搜索结果和网页内容会直接污染编排层上下文。
+- 子 agent 逐个唤醒，不要并行 — 前一步的审查结果需要指导后一步（排版审查不过就不该生图），并行会导致审查结果无法传递、同时消耗大量 token、修复时无法定位问题来源。
+- 子 agent 只需返回结论和摘要 — 让子 agent 返回 HTML 源码等大段内容会直接撑爆主 agent 上下文。
+- 审查环节不可跳过 — 三轮审查捕获的典型问题：排版雷同(30%)、图文不协调(20%)、内容空洞(15%)。跳过 = 交付低质量 PPT。
+- 子 agent 间通过文件路径传递状态（PLAN.md / references/），不传大段文本 — 传递文本 = 多份上下文重复占用。
+- prompt 模板通过 READ 按需加载，不内联在调度指令中 — 内联 = 每次重复消耗 token 且无法独立更新。
+- 无论如何都要有交付物 — 至少交付 PLAN.md + image prompts，不能空手。
 
 ### 设计层
 
-- **NEVER** 一页超过150字正文 — PPT是视觉媒体不是文档。超过150字=观众会读PPT而不是听演讲。密度的实现靠"极简(10-40字)/中等/深度(80-150字)"的标注，不是堆文字
-- **NEVER** 连续2页同一密度 — 密→疏→密→疏的节奏感是观众保持注意力的核心机制。连续深度页=观众疲劳，连续极简页=信息量不足
-- **NEVER** 使用与内容无关的装饰性配图 — 装饰图让PPT看起来"像AI生成的"。图要么传达信息（内容锚点驱动），要么不要。去掉图信息会受损吗？不会→text-only
-- **NEVER** 所有页面使用相同的空间组织方式 — 10页至少6种不同排版逻辑。千篇一律的布局=观众在第3页后停止关注。变化本身是注意力管理工具
-- **NEVER** 配图Prompt以风格描述开头 — Prompt前60%必须是内容锚点（画什么），风格关键词只在末尾。风格开头的Prompt生成的是"好看的无关图"
+- 每页正文不超过 150 字 — PPT 是视觉媒体，超过 150 字观众会读 PPT 而不是听演讲。用"极简(10-40字)/中等/深度(80-150字)"的标注控制密度，不是堆文字。
+- 不要连续 2 页同一密度 — 密→疏→密→疏的节奏感是观众保持注意力的核心机制。
+- 配图必须传达信息，不要装饰性图片 — 装饰图让 PPT 看起来"像 AI 生成的"。判断标准：去掉这张图信息会受损吗？不会 → text-only。
+- 10 页至少 6 种不同排版逻辑 — 千篇一律的布局 = 观众在第 3 页后停止关注。变化本身是注意力管理工具。
+- 配图 Prompt 前 60% 是内容锚点（画什么），风格关键词在末尾 — 风格开头的 Prompt 生成的是"好看的无关图"。

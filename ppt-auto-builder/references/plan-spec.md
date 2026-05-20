@@ -5,6 +5,21 @@
 
 **首次编写 PLAN.md 前**，建议先阅读 `references/example-plan.md` 了解完整的输出格式——该示例展示了 10页PPT仅3页配图(30%配图率)的智能决策结果。
 
+## 目录
+
+- [0. 配图决策规则](#0-配图决策规则写逐页规划前必读)
+- [内容要点编写原则](#内容要点编写原则)
+- [布局创作原则](#布局创作原则每页独立设计)
+- [完整模板](#完整模板)
+  - [一、基本信息](#一基本信息)
+  - [二、风格参数速查](#二风格参数速查)
+  - [三、逐页规划](#三逐页规划)
+  - [四、配图生成清单](#四配图生成清单)
+  - [五、技术规范](#五技术规范)
+  - [六、知识直通](#六知识直通)
+- [字段约束](#字段约束)
+- [风格参数来源](#风格参数来源)
+
 ---
 
 ## 0. 配图决策规则（写逐页规划前必读）
@@ -163,7 +178,7 @@ Prompt = 内容锚点（60%）+ 风格修饰（25%）+ 布局约束（15%）
 | 风格 | Study Style #20 — 学术研究双模系统（暖学术 + 锐学术） |
 | 语言 | 中文/英文/双语 |
 | 受众 | 学术/商业/教学/科普 |
-| 研究笔记 | ppt_workspace/research_notes.md（下游技能的知识弹药库） |
+| 研究笔记 | ppt_workspace/references/（知识库目录，下游技能按需读取 ref-*.md） |
 
 ## 二、风格参数速查
 
@@ -272,12 +287,12 @@ Prompt = 内容锚点（60%）+ 风格修饰（25%）+ 布局约束（15%）
 
 ## 六、知识直通
 
-> **PLAN.md 是骨架，research_notes.md 是弹药库。** 下游技能 huashu-slides 必须同时拿到两者才能创作出有深度的幻灯片。
+> **PLAN.md 是骨架，`references/` 是弹药库。** 下游技能 huashu-slides 必须同时拿到两者才能创作出有深度的幻灯片。
 
-- **知识传递链**: research_notes.md → ppt-auto-builder → PLAN.md（浓缩） + research_notes.md（原文） → huashu-slides → 幻灯片
-- downstream 调用时必须显式传入 research_notes.md 的绝对路径
+- **知识传递链**: knowledge-agent → `references/ref-*.md` + `_index.md` → ppt-auto-builder → PLAN.md（浓缩） + `references/`（原文） → huashu-slides → 幻灯片
+- downstream 调用时传入 `ppt_workspace/references/` 目录路径，子 agent 先读 `_index.md` 定位所需维度文件
 - PLAN.md 的"内容要点"是创作指引（含数据锚点和扩展方向），不是最终幻灯片文字
-- 幻灯片构建者（huashu-slides）应从 research_notes.md 提取具体数据、引用、背景解释，而非仅依赖 PLAN.md 中浓缩后的要点
+- 幻灯片构建者（huashu-slides）应从对应 `ref-*.md` 提取具体数据、引用、背景解释，而非仅依赖 PLAN.md 中浓缩后的要点
 ```
 
 ---

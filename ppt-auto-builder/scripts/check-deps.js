@@ -23,6 +23,7 @@ const results = {
   skills_dir: SKILLS_DIR,
   huashu_slides: { installed: false, html2pptx: false },
   gpt_image_2: { installed: false, generate: false, mode: 'unknown' },
+  open_websearch: { installed: false },
   pptxgenjs: false,
   playwright: false,
   sharp: false,
@@ -73,7 +74,18 @@ if (fs.existsSync(path.join(giDir, 'SKILL.md'))) {
   );
 }
 
-// 3. pptxgenjs (needed by huashu-slides html2pptx)
+// 3. open-websearch
+const owsDir = path.join(SKILLS_DIR, 'open-websearch');
+if (fs.existsSync(path.join(owsDir, 'SKILL.md'))) {
+  results.open_websearch.installed = true;
+} else {
+  results.ok = false;
+  results.errors.push(
+    'open-websearch 未安装。自动安装: npx skills add https://github.com/Aas-ee/open-webSearch --skill open-websearch'
+  );
+}
+
+// 4. pptxgenjs (needed by huashu-slides html2pptx)
 try {
   require.resolve('pptxgenjs', { paths: [process.cwd()] });
   results.pptxgenjs = true;
@@ -90,7 +102,7 @@ try {
   }
 }
 
-// 4. playwright (needed by huashu-slides html2pptx)
+// 5. playwright (needed by huashu-slides html2pptx)
 try {
   require.resolve('playwright', { paths: [process.cwd()] });
   results.playwright = true;
@@ -107,7 +119,7 @@ try {
   }
 }
 
-// 5. sharp (needed by html2pptx.js for image processing)
+// 6. sharp (needed by html2pptx.js for image processing)
 try {
   require.resolve('sharp', { paths: [process.cwd()] });
   results.sharp = true;
@@ -137,6 +149,9 @@ if (jsonMode) {
   );
   console.log(
     `[gpt-image-2]   ${icon(results.gpt_image_2.installed)} 已安装  generate.js: ${icon(results.gpt_image_2.generate)}  模式: ${results.gpt_image_2.mode}`
+  );
+  console.log(
+    `[open-websearch] ${icon(results.open_websearch.installed)} 已安装`
   );
   console.log(`[pptxgenjs]    ${icon(results.pptxgenjs)}`);
   console.log(`[playwright]   ${icon(results.playwright)}`);
